@@ -30,8 +30,8 @@ JNIEXPORT void JNICALL
 Java_com_anandmuralidhar_simplearandroid_CameraClass_SendCamImageToNative(JNIEnv *env,
                                                                               jobject instance,
                                                                               jbyteArray data_,
-                                                                              jint mPreview_height,
-                                                                              jint mPreview_width) {
+                                                                              jint previewHeight,
+                                                                              jint previewWidth) {
     if(gSimpleARObject == NULL) {
         return;
     }
@@ -39,11 +39,11 @@ Java_com_anandmuralidhar_simplearandroid_CameraClass_SendCamImageToNative(JNIEnv
     jbyte *data = env->GetByteArrayElements(data_, NULL);
 
     // Android returns data in NV21 format, convert it to RGB
-    cv::Mat cameraNV21Image(mPreview_height * 1.5, mPreview_width, CV_8UC1, data);
+    cv::Mat cameraNV21Image(previewHeight * 1.5, previewWidth, CV_8UC1, data);
     cv::Mat cameraRGBImage;
     cv::cvtColor(cameraNV21Image, cameraRGBImage, CV_YUV2RGB_NV21, 3);
 
-    gSimpleARObject->ProcessCameraImage(cameraRGBImage, mPreview_width, mPreview_height);
+    gSimpleARObject->ProcessCameraImage(cameraRGBImage);
 
     env->ReleaseByteArrayElements(data_, data, 0);
 }

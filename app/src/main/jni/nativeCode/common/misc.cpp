@@ -74,3 +74,54 @@ void PrintCVMat(cv::Mat matToPrint) {
     MyLOGD("%s", matAsString.c_str());
 
 }
+
+
+/**
+ * convert vector of keypoint to vector of Point2f
+ */
+std::vector<cv::Point2f> Keypoint2Point(std::vector<cv::KeyPoint> keypoints)
+{
+    std::vector<cv::Point2f> vectorOfPoints;
+    for(unsigned i = 0; i < keypoints.size(); i++) {
+
+        vectorOfPoints.push_back(keypoints[i].pt);
+
+    }
+    return vectorOfPoints;
+}
+
+/**
+ * draw a red rectangle corresponding to reference frame used to compute homography
+ */
+void DrawShiftedCorners(cv::Mat image, cv::Mat homography){
+
+    //-- Get the corners from the image_1 ( the object to be "detected" )
+    std::vector< cv::Point2f > imageCorners(4);
+    imageCorners[0] = cv::Point2f(0, 0);
+    imageCorners[1] = cv::Point2f(image.cols, 0 );
+    imageCorners[2] = cv::Point2f(image.cols, image.rows );
+    imageCorners[3] = cv::Point2f(0, image.rows );
+    std::vector< cv::Point2f > sceneCorners(4);
+
+    cv::perspectiveTransform(imageCorners, sceneCorners, homography);
+
+    //-- Draw lines between the corners (the mapped object in the scene - image_2 )
+    cv::line(image, sceneCorners[0], sceneCorners[1], cv::Scalar(255), 4 );
+    cv::line(image, sceneCorners[1], sceneCorners[2], cv::Scalar(255), 4 );
+    cv::line(image, sceneCorners[3], sceneCorners[0], cv::Scalar(255), 4 );
+    cv::line(image, sceneCorners[2], sceneCorners[3], cv::Scalar(255), 4 );
+}
+
+cv::Mat ConstructCameraIntrinsicMatForCV(glm::mat4 projectionMat,
+                                         float imageWidth, float imageHeight) {
+
+    //derive camera intrinsic mx from GL projection-mx
+    cv::Mat cameraIntrinsicMat = cv::Mat::zeros(3, 3, CV_32F);
+    // fx, fy, camera centers need to be in pixels for cv
+    cameraIntrinsicMat.at<float>(0, 0) = projectionMat[0][0] * imageWidth / 2;
+    cameraIntrinsicMat.at<float>(0, 2) = imageWidth / 2;
+    cameraIntrinsicMat.at<float>(1, 1) = projectionMat[1][1] * imageHeight / 2;
+    cameraIntrinsicMat.at<float>(1, 2) = imageHeight / 2;
+    cameraIntrinsicMat.at<float>(2, 2) = 1.;
+    return cameraIntrinsicMat;
+}

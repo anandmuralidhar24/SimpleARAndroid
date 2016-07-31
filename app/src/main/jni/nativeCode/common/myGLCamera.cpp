@@ -264,7 +264,9 @@ std::vector<cv::Point3f> MyGLCamera::GetProjectedPointsOnFloor(std::vector<cv::P
 }
 
 
-void MyGLCamera::UpdateModelMat(cv::Mat translationVector, cv::Mat rotationVector) {
+void MyGLCamera::UpdateModelMat(cv::Mat translationVector,
+                                cv::Mat rotationVector,
+                                cv::Mat defaultModelPosition) {
 
     cv::Mat newModelMat = cv::Mat::eye(4, 4, CV_64F);
 
@@ -283,11 +285,11 @@ void MyGLCamera::UpdateModelMat(cv::Mat translationVector, cv::Mat rotationVecto
     newModelMat = newModelMat.t();
     modelMat = glm::make_mat4((float *) newModelMat.data);
 
-    glm::mat4 translateModel = glm::mat4(
-            1,			0,			0,			0,  // col1
-            0,			1,			0,			0,	// col2
-            0, 			0,			1,			0,	// col3
-            0,	        0, 	        -75, 	    1); // col4
+    glm::mat4 translateModel = glm::mat4(1.);
+    defaultModelPosition.convertTo(defaultModelPosition, CV_64F);
+    translateModel[3][0] = defaultModelPosition.at<double>(0,0);
+    translateModel[3][1] = defaultModelPosition.at<double>(1,0);
+    translateModel[3][2] = defaultModelPosition.at<double>(2,0);
 
     modelMat = modelMat * translateModel;
 

@@ -28,11 +28,11 @@
 #include <mutex>
 #include <backTexture.h>
 
-#define MIN_KPS_IN_FRAME            300
-#define MIN_INLIER_COUNT            25
-#define CAM_HEIGHT_FROM_FLOOR       75
+#define MIN_KPS_IN_FRAME            300     // need to detect at least these keypoints in reference image
+#define MIN_INLIER_COUNT            30      // should have at least these many matches
+#define CAM_HEIGHT_FROM_FLOOR       75      // assumed distance between device and floor
 #define NN_MATCH_RATIO              0.8f    // Nearest-neighbour matching ratio
-#define RANSAC_THRESH               2.5f    // RANSAC inlier threshold
+#define RANSAC_THRESH               2.5f    // RANSAC inlier threshold for solvePnp
 
 class SimpleARClass {
 public:
@@ -41,8 +41,8 @@ public:
     void    PerformGLInits();
     void    Render();
     void    SetViewport(int width, int height);
-    void    ProcessCameraImage(cv::Mat cameraRGBImage, int mPreview_width, int mPreview_height);
-    void    SetCameraPreviewDims(int cameraPreviewWidth, int cameraPreviewHeight);
+    void    ProcessCameraImage(cv::Mat cameraRGBImage);
+    void    SetCameraParams(int cameraPreviewWidth, int cameraPreviewHeight, float cameraFOV);
     void    DoubleTapAction();
     void    UpdateGravity(float gx, float gy, float gz);
 
@@ -51,8 +51,6 @@ private:
     bool    DetectKeypointsInReferenceImage();
     bool    DetectKeypointsInQueryImage();
     void    TrackKeypointsAndUpdatePose();
-    cv::Mat ConstructCameraIntrinsicMatForCV(glm::mat4 projectionViewMat,
-                                             float imageWidth, float imageHeight);
 
     cv::Ptr<cv::DescriptorMatcher> matcher;
     cv::Mat referenceDescriptors;
@@ -65,7 +63,10 @@ private:
     bool    newCameraImage;
     int     cameraPreviewWidth, cameraPreviewHeight;
     bool    trackingIsOn;
-    bool    pnpResultIsValid;
+    bool    pnpResultIsValid, newPnpResult;
+    bool    renderModel;
+    float   previewScaleFactor;
+    float   cameraFOV;
 
     std::mutex  cameraMutex;
     cv::Ptr<cv::Feature2D> cornerDetector;
@@ -75,6 +76,7 @@ private:
     cv::Mat translationVectorCopy, rotationVectorCopy;
     std::mutex  pnpMutex;
 
+    std::vector<cv::Point3f> sourceKeypointLocationsIn3D;
     std::mutex  gravityMutex;
     std::vector <float> gravity;
     glm::vec3   sourceGravityVector;

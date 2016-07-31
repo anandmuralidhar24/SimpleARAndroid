@@ -56,13 +56,13 @@ Java_com_anandmuralidhar_simplearandroid_SimpleARActivity_DeleteObjectNative(JNI
 }
 
 JNIEXPORT void JNICALL
-Java_com_anandmuralidhar_simplearandroid_SimpleARActivity_SetCameraPreviewDimsNative(
-        JNIEnv *env, jobject instance, jint previewWidth, jint previewHeight) {
+Java_com_anandmuralidhar_simplearandroid_SimpleARActivity_SetCameraParamsNative(
+        JNIEnv *env, jobject instance, jint previewWidth, jint previewHeight, jfloat cameraFOV) {
 
     if (gSimpleARObject == NULL) {
         return;
     }
-    gSimpleARObject->SetCameraPreviewDims((int) previewWidth, (int) previewHeight);
+    gSimpleARObject->SetCameraParams((int) previewWidth, (int) previewHeight, (float) cameraFOV);
 }
 
 #ifdef __cplusplus

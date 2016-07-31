@@ -36,7 +36,7 @@ public class SimpleARActivity extends Activity{
 
     private native void CreateObjectNative(AssetManager assetManager, String pathToInternalDir);
     private native void DeleteObjectNative();
-    private native void SetCameraPreviewDimsNative(int previewWidth, int previewHeight);
+    private native void SetCameraParamsNative(int previewWidth, int previewHeight, float cameraFOV);
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -45,15 +45,16 @@ public class SimpleARActivity extends Activity{
         AssetManager assetManager = getAssets();
         String pathToInternalDir = getFilesDir().getAbsolutePath();
 
-        // call the native constructors to create an object
-        CreateObjectNative(assetManager, pathToInternalDir);
-
         mCameraObject = new CameraClass();
         if(!mCameraObject.IsResolutionSupported()) {
             ShowExitDialog(this, getString(R.string.exit_no_resolution));
             return;
         }
-        SetCameraPreviewDimsNative(mCameraObject.GetPreviewWidth(), mCameraObject.GetPreviewHeight());
+
+        // call the native constructors to create an object
+        CreateObjectNative(assetManager, pathToInternalDir);
+        SetCameraParamsNative(mCameraObject.GetPreviewWidth(), mCameraObject.GetPreviewHeight(),
+                mCameraObject.GetFOV());
 
         // layout has only two components, a GLSurfaceView and a TextView
         setContentView(R.layout.simplear_layout);

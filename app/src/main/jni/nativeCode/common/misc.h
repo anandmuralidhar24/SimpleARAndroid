@@ -31,4 +31,11 @@ void PrintGLMMat4(glm::mat4 testMat);
 
 void PrintCVMat(cv::Mat matToPrint);
 
+std::vector<cv::Point2f> Keypoint2Point(std::vector<cv::KeyPoint> keypoints);
+
+void DrawShiftedCorners(cv::Mat image, cv::Mat homography);
+
+cv::Mat ConstructCameraIntrinsicMatForCV(glm::mat4 projectionMat,
+                                         float imageWidth, float imageHeight);
+
 #endif //MISC_H

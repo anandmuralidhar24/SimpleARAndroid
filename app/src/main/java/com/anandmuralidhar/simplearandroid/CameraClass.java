@@ -44,6 +44,7 @@ public class CameraClass{
     private static CameraHandlerThread mCameraThread = null;
     public  int GetPreviewWidth(){ return mPreviewWidth; }
     public  int GetPreviewHeight(){ return mPreviewHeight; }
+    public  float GetFOV() {return cameraFOVLandscape;}
     public  boolean IsResolutionSupported(){ return isResolutionSupported; }
 
     /**
