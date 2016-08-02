@@ -111,17 +111,3 @@ void DrawShiftedCorners(cv::Mat image, cv::Mat homography){
     cv::line(image, sceneCorners[3], sceneCorners[0], cv::Scalar(255), 4 );
     cv::line(image, sceneCorners[2], sceneCorners[3], cv::Scalar(255), 4 );
 }
-
-cv::Mat ConstructCameraIntrinsicMatForCV(glm::mat4 projectionMat,
-                                         float imageWidth, float imageHeight) {
-
-    //derive camera intrinsic mx from GL projection-mx
-    cv::Mat cameraIntrinsicMat = cv::Mat::zeros(3, 3, CV_32F);
-    // fx, fy, camera centers need to be in pixels for cv
-    cameraIntrinsicMat.at<float>(0, 0) = projectionMat[0][0] * imageWidth / 2;
-    cameraIntrinsicMat.at<float>(0, 2) = imageWidth / 2;
-    cameraIntrinsicMat.at<float>(1, 1) = projectionMat[1][1] * imageHeight / 2;
-    cameraIntrinsicMat.at<float>(1, 2) = imageHeight / 2;
-    cameraIntrinsicMat.at<float>(2, 2) = 1.;
-    return cameraIntrinsicMat;
-}

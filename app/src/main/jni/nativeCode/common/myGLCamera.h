@@ -49,8 +49,9 @@ public:
                                                        glm::vec3 sourceGravityVector,
                                                        float heightFromFloor,
                                                        float imageWidth, float imageHeight);
+    cv::Mat     ConstructCameraIntrinsicMatForCV(float imageWidth, float imageHeight);
     void        UpdateModelMat(cv::Mat translationVector, cv::Mat rotationVector,
-                               cv::Mat defaultModelPosition);
+                               cv::Mat modelDefaultTranslation);
 
 private:
     void        ComputeMVPMatrix();

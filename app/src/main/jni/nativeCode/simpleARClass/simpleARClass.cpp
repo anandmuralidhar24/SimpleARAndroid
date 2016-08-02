@@ -28,7 +28,7 @@ SimpleARClass::SimpleARClass() {
     back = NULL;
 
     cornerDetector = cv::ORB::create(750); // choosing ORB detector with default parameters
-    matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
+    matcher        = cv::DescriptorMatcher::create("BruteForce-Hamming");
 
     modelObject = NULL;
 
@@ -36,16 +36,16 @@ SimpleARClass::SimpleARClass() {
     gravity.assign(3, 0);
     gravity[2] = 1.0f;
 
-    trackingIsOn = false;
-    pnpResultIsValid = false;
-    renderModel = false;
-    newPnpResult = false;
-    previewScaleFactor = 0.5; // camera image is downscaled to half its original size
+    trackingIsOn        = false;
+    pnpResultIsValid    = false;
+    renderModel         = false;
+    newPnpResult        = false;
+    previewScaleFactor  = 0.5; // camera image is downscaled to half its original size
 
-    translationVector = cv::Mat::zeros(3,1,CV_32F);
-    translationVectorCopy = cv::Mat::zeros(3,1,CV_32F);
-    rotationVector = cv::Mat::zeros(3,1,CV_32F);
-    rotationVectorCopy = cv::Mat::zeros(3,1,CV_32F);
+    translationVector       = cv::Mat::zeros(3,1,CV_32F);
+    translationVectorCopy   = cv::Mat::zeros(3,1,CV_32F);
+    rotationVector          = cv::Mat::zeros(3,1,CV_32F);
+    rotationVectorCopy      = cv::Mat::zeros(3,1,CV_32F);
 }
 
 SimpleARClass::~SimpleARClass() {
@@ -108,6 +108,7 @@ void SimpleARClass::Render() {
     // clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // render the camera image as the background texture
     cameraMutex.try_lock();
     if(newCameraImage) {
         back->LoadBackImg(cameraImageForBack);
@@ -116,6 +117,7 @@ void SimpleARClass::Render() {
     cameraMutex.unlock();
     back->Render();
 
+    // render the 3D model if we have tracked reference marker in query image
     if(trackingIsOn) {
 
         pnpMutex.try_lock();
@@ -192,7 +194,7 @@ void SimpleARClass::ProcessCameraImage(cv::Mat cameraRGBImage) {
 
         // if enough feature points are detected in query image, then try to match them
         // else indicate to render loop that matching has failed for this frame
-        if(DetectKeypointsInQueryImage()) {
+        if(MatchKeypointsInQueryImage()) {
 
             TrackKeypointsAndUpdatePose();
 
@@ -245,15 +247,15 @@ void SimpleARClass::SetCameraParams(int cameraPreviewWidth, int cameraPreviewHei
 void SimpleARClass::DoubleTapAction() {
 
     // if we are able to detect required number of feature points, then start tracking
-    if(DetectKeypointsInReferenceImage()) {
+if(DetectKeypointsInReferenceImage()) {
 
-        trackingIsOn = true;
+    trackingIsOn = true;
 
-    } else {
+} else {
 
-        trackingIsOn = false;
+    trackingIsOn = false;
 
-    }
+}
 }
 
 /**
@@ -298,7 +300,7 @@ bool SimpleARClass::DetectKeypointsInReferenceImage() {
 /**
  * Match keypoints in new image with reference frame. Compute homography to determine inliers
  */
-bool SimpleARClass::DetectKeypointsInQueryImage() {
+    bool SimpleARClass::MatchKeypointsInQueryImage() {
 
     std::vector<cv::KeyPoint> queryKeypoints;
     cv::Mat queryDescriptors;
@@ -332,7 +334,8 @@ bool SimpleARClass::DetectKeypointsInQueryImage() {
     // compute homography to further prune outlier keypoints
     cv::Mat homography, inlierMask;
     if (sourceMatches.size() >= MIN_INLIER_COUNT) {
-        homography = cv::findHomography(Keypoint2Point(sourceMatches), Keypoint2Point(queryMatches),
+        homography = cv::findHomography(Keypoint2Point(sourceMatches),
+                                        Keypoint2Point(queryMatches),
                                         cv::RANSAC, RANSAC_THRESH, inlierMask);
     } else {
         MyLOGD("Very few kps match, cannot proceed further!", (int) sourceMatches.size());
@@ -373,13 +376,9 @@ bool SimpleARClass::DetectKeypointsInQueryImage() {
 void SimpleARClass::TrackKeypointsAndUpdatePose() {
 
     // Use inliers as reference points
-    sourceInlierPoints.clear();
-    queryInlierPoints.clear();
+    sourceInlierPoints  = Keypoint2Point(sourceInlierKeypoints);
+    queryInlierPoints   = Keypoint2Point(queryInlierKeypoints);
     int num_reference_pts = sourceInlierKeypoints.size();
-    for(int i=0; i< num_reference_pts;i++){
-        sourceInlierPoints.push_back(sourceInlierKeypoints[i].pt);
-        queryInlierPoints.push_back(queryInlierKeypoints[i].pt);
-    }
 
     // Project inlier points onto an imaginary floor to get their 3D locations
     sourceKeypointLocationsIn3D.clear();
@@ -389,11 +388,9 @@ void SimpleARClass::TrackKeypointsAndUpdatePose() {
                                                                         cameraImageForBack.cols,
                                                                         cameraImageForBack.rows);
 
-    // construct the camera intrinsic matrix from OpenGL's projection matrix
-    glm::mat4 projectionMat = myGLCamera->GetProjection();
-    cv::Mat cameraMatrix = ConstructCameraIntrinsicMatForCV(projectionMat,
-                                                            cameraImageForBack.cols,
-                                                            cameraImageForBack.rows);
+    // construct the camera intrinsic matrix
+    cv::Mat cameraMatrix = myGLCamera->ConstructCameraIntrinsicMatForCV(cameraImageForBack.cols,
+                                                                        cameraImageForBack.rows);
 
 
     // estimate pose of query frame with solvepnp

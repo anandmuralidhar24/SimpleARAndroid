@@ -224,23 +224,23 @@ std::vector<cv::Point3f> MyGLCamera::GetProjectedPointsOnFloor(std::vector<cv::P
                                                                float imageWidth, float imageHeight){
 
     //Calculate the near plane distances
-    float zNearPlane = zPosition - nearPlaneDistance;
+    float zNearPlane = nearPlaneDistance - zPosition;
     float tangent = tan((FOV * M_PI / 180)/2);   // FOV = display frustum's FOVY
     float nearPlaneHalfHeight = nearPlaneDistance * tangent;
     float aspect = imageWidth / imageHeight;
     float nearPlaneHalfWidth = nearPlaneHalfHeight * aspect;
 
     glm::vec3 cameraPosition = glm::vec3(0, 0, zPosition);
-    glm::vec3 gravity = glm::normalize(-sourceGravityVector);
+    glm::vec3 gravity = glm::normalize(sourceGravityVector);
 
     std::vector<cv::Point3f> pointLocationsIn3D(sourceKeypoints.size(), cv::Point3f(0, 0, 0));
     for(unsigned int i=0; i < sourceKeypoints.size(); i++){
 
-        // convert point coordinates to normalized device coordinates (ndc) in range [-1,1]
-        float xCoordndc = 2 * sourceKeypoints[i].x / imageWidth - 1;
-        float xNearPlane = xCoordndc * nearPlaneHalfWidth;
-        float yCoordndc = 1 - 2 * sourceKeypoints[i].y / imageHeight;
-        float yNearPlane = yCoordndc * nearPlaneHalfHeight;
+        // convert point coordinates to normalized coordinates in range [-1,1]
+        float xCoordNorm = 2 * sourceKeypoints[i].x / imageWidth - 1;
+        float xNearPlane = xCoordNorm * nearPlaneHalfWidth;
+        float yCoordNorm = 2 * sourceKeypoints[i].y / imageHeight - 1;
+        float yNearPlane = yCoordNorm * nearPlaneHalfHeight;
         glm::vec3 pointOnNearPlane = glm::vec3(xNearPlane, yNearPlane, zNearPlane);
 
         glm::vec3 unitRay = glm::normalize(pointOnNearPlane - cameraPosition);
@@ -250,10 +250,9 @@ std::vector<cv::Point3f> MyGLCamera::GetProjectedPointsOnFloor(std::vector<cv::P
         glm::vec3 pointOnFloor = unitRay * (heightFromFloor / cosineRayGravity) +
                                  cameraPosition;
 
-        //flip y,z axis for opencv
         pointLocationsIn3D[i].x = pointOnFloor.x;
-        pointLocationsIn3D[i].y = -pointOnFloor.y;
-        pointLocationsIn3D[i].z = -pointOnFloor.z;
+        pointLocationsIn3D[i].y = pointOnFloor.y;
+        pointLocationsIn3D[i].z = pointOnFloor.z;
 
 //        MyLOGD("pointLocationsIn3D %f %f %f", pointLocationsIn3D[i].x, pointLocationsIn3D[i].y,
 //               pointLocationsIn3D[i].z );
@@ -263,33 +262,67 @@ std::vector<cv::Point3f> MyGLCamera::GetProjectedPointsOnFloor(std::vector<cv::P
     return pointLocationsIn3D;
 }
 
+/**
+ * Compute the intrinsic matrix using camera's FOV and image dimensions
+ */
+cv::Mat MyGLCamera::ConstructCameraIntrinsicMatForCV(float imageWidth, float imageHeight) {
 
+    //derive camera intrinsic mx from GL projection-mx
+    cv::Mat cameraIntrinsicMat = cv::Mat::zeros(3, 3, CV_32F);
+
+    // fx, fy, camera centers need to be in pixels for cv
+    // assume fx = fy = focal length
+    // FOV = 2 arctan(imageHeight / focalLength)
+    float focalLength = imageHeight / 2 / tan((FOV * M_PI / 180)/2);
+    cameraIntrinsicMat.at<float>(0, 0) = focalLength;
+    cameraIntrinsicMat.at<float>(1, 1) = focalLength;
+
+    // principal point = image center
+    cameraIntrinsicMat.at<float>(0, 2) = imageWidth / 2;
+    cameraIntrinsicMat.at<float>(1, 2) = imageHeight / 2;
+
+    cameraIntrinsicMat.at<float>(2, 2) = 1.;
+    return cameraIntrinsicMat;
+}
+
+
+/**
+ * Calculate the extrinsic matrix from translation/rotation vectors.
+ * Account for initial position of the model
+ */
 void MyGLCamera::UpdateModelMat(cv::Mat translationVector,
                                 cv::Mat rotationVector,
-                                cv::Mat defaultModelPosition) {
+                                cv::Mat modelDefaultTranslation) {
 
     cv::Mat newModelMat = cv::Mat::eye(4, 4, CV_64F);
 
-    //load translation vector in top-last column 3x1
+    // load translation vector in top-last column 3x1, matrix will be as shown below
+    // 1   0   0   x
+    // 0   1   0   y
+    // 0   0   1   z
+    // 0   0   0   1
     translationVector.convertTo(translationVector, CV_64F);
-    newModelMat.at<double>(0, 3) = translationVector.at<double>(0, 0);
-    newModelMat.at<double>(1, 3) = translationVector.at<double>(1, 0);
-    newModelMat.at<double>(2, 3) = translationVector.at<double>(2, 0);
+    newModelMat.at<double>(0, 3) = translationVector.at<double>(0, 0); // x
+    newModelMat.at<double>(1, 3) = translationVector.at<double>(1, 0); // y
+    newModelMat.at<double>(2, 3) = translationVector.at<double>(2, 0); // z
 
-    //construct rotation vec
+    // construct rotation matrix
     cv::Mat newRotationMat;
     cv::Rodrigues(rotationVector, newRotationMat);
     newRotationMat.copyTo(newModelMat(cv::Rect(0, 0, 3, 3)));
 
+    // construct new model mat corresponding to extrinsic params
     newModelMat.convertTo(newModelMat, CV_32F);
     newModelMat = newModelMat.t();
     modelMat = glm::make_mat4((float *) newModelMat.data);
 
+    // construct model mat that corresponds to default position of 3D model in worldspace
+    // we are only considering translation and assuming that default pos has no rotation
     glm::mat4 translateModel = glm::mat4(1.);
-    defaultModelPosition.convertTo(defaultModelPosition, CV_64F);
-    translateModel[3][0] = defaultModelPosition.at<double>(0,0);
-    translateModel[3][1] = defaultModelPosition.at<double>(1,0);
-    translateModel[3][2] = defaultModelPosition.at<double>(2,0);
+    modelDefaultTranslation.convertTo(modelDefaultTranslation, CV_64F);
+    translateModel[3][0] = modelDefaultTranslation.at<double>(0, 0);
+    translateModel[3][1] = modelDefaultTranslation.at<double>(1, 0);
+    translateModel[3][2] = modelDefaultTranslation.at<double>(2, 0);
 
     modelMat = modelMat * translateModel;
 

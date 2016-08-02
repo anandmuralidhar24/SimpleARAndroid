@@ -49,7 +49,7 @@ public:
 private:
     void    DetectAndHighlightCorners();
     bool    DetectKeypointsInReferenceImage();
-    bool    DetectKeypointsInQueryImage();
+    bool    MatchKeypointsInQueryImage();
     void    TrackKeypointsAndUpdatePose();
 
     cv::Ptr<cv::DescriptorMatcher> matcher;
