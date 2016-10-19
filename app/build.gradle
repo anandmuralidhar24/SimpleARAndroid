@@ -53,8 +53,8 @@ model {
             platformVersion = 19
             moduleName = 'SimpleARNative' // this creates libSimpleARNative.so and should be loaded in Java
             stl        = 'gnustl_static'
-            abiFilters.addAll(['armeabi-v7a', 'x86'])
-
+            abiFilters.add('armeabi-v7a')
+            
             // specify the path to jni code
             cppFlags.addAll(['-I' + file('src/main/jni/nativeCode/simpleARClass'),
                              '-I' + file('src/main/jni/nativeCode/common'),
