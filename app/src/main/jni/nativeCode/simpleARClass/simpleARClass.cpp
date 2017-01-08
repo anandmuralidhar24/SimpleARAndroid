@@ -36,6 +36,7 @@ SimpleARClass::SimpleARClass() {
     gravity.assign(3, 0);
     gravity[2] = 1.0f;
 
+    doubleTapAction     = false;
     trackingIsOn        = false;
     pnpResultIsValid    = false;
     renderModel         = false;
@@ -190,7 +191,20 @@ void SimpleARClass::ProcessCameraImage(cv::Mat cameraRGBImage) {
     // OpenCV image needs to be flipped for OpenGL
     cv::flip(cameraImageForBack, cameraImageForBack, 0);
 
-    if(trackingIsOn) {
+    if(doubleTapAction) {
+        // if we are able to detect required number of feature points, then start tracking
+        if(DetectKeypointsInReferenceImage()) {
+
+            trackingIsOn = true;
+
+        } else {
+
+            trackingIsOn = false;
+
+        }
+        doubleTapAction = false;
+
+    } else if(trackingIsOn) {
 
         // if enough feature points are detected in query image, then try to match them
         // else indicate to render loop that matching has failed for this frame
@@ -246,16 +260,10 @@ void SimpleARClass::SetCameraParams(int cameraPreviewWidth, int cameraPreviewHei
  */
 void SimpleARClass::DoubleTapAction() {
 
-    // if we are able to detect required number of feature points, then start tracking
-if(DetectKeypointsInReferenceImage()) {
-
-    trackingIsOn = true;
-
-} else {
-
-    trackingIsOn = false;
-
-}
+    cameraMutex.lock();
+    // set a flag to check if a new reference image can be saved
+    doubleTapAction = true;
+    cameraMutex.unlock();
 }
 
 /**
@@ -277,11 +285,9 @@ void SimpleARClass::UpdateGravity(float gx, float gy, float gz) {
 bool SimpleARClass::DetectKeypointsInReferenceImage() {
 
     //Detect feature points and descriptors in reference image
-    cameraMutex.lock();
     cornerDetector->detectAndCompute(cameraImageForBack, cv::noArray(),
                                      referenceKeypoints, referenceDescriptors);
-    cameraMutex.unlock();
-    MyLOGD("Numer of feature points in source frame %d", (int)referenceKeypoints.size());
+    MyLOGD("Number of feature points in source frame %d", (int)referenceKeypoints.size());
 
     if(referenceKeypoints.size() < MIN_KPS_IN_FRAME){
         return false;

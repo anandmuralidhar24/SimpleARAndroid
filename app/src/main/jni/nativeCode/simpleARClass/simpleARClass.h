@@ -67,6 +67,7 @@ private:
     bool    renderModel;
     float   previewScaleFactor;
     float   cameraFOV;
+    bool    doubleTapAction;
 
     std::mutex  cameraMutex;
     cv::Ptr<cv::Feature2D> cornerDetector;
